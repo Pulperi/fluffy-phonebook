@@ -80,7 +80,7 @@ app.put('/api/persons/:id', (request, response, next) => {
 
 app.delete('/api/persons/:id', (request, response, next) => {
     const id = request.params.id
-    Person.findByIdAndRemove(id).then(result =>
+    Person.findByIdAndRemove(id).then(() =>
         response.status(204).end()
     ).catch(error => next(error))
 })
@@ -96,7 +96,7 @@ const errorHandler = (error, request, response, next) => {
     console.log(error.message)
 
     if (error.name === 'CastError') {
-        return response.status(400).send({ error: `malformatted id` })
+        return response.status(400).send({ error: 'malformatted id' })
     } else if (error.name === 'ValidationError') {
         return response.status(400).send({ error: error.message })
     }
@@ -106,7 +106,7 @@ const errorHandler = (error, request, response, next) => {
 
 app.use(errorHandler)
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT
 app.listen(PORT, () => {
-    console.log(`Our app is running on port ${PORT}`);
-});
+    console.log(`Our app is running on port ${PORT}`)
+})
