@@ -1,31 +1,10 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
+const Person = require('./models/person')
 
-let persons = [
-    {
-        name: "Mary Poppendieck",
-        number: "39-23-6423122",
-        id: 1
-    },
-    {
-        name: "Henri Sahlberg",
-        number: "20132131",
-        id: 2
-    },
-    {
-        name: "Arto Paasikivi",
-        number: "20132131",
-        id: 3
-    },
-    {
-        name: "Arto Hellas",
-        number: "1231200123",
-        id: 4
-    }
-]
-
-morgan.token('body', (req) =>  
+morgan.token('body', (req) =>
     JSON.stringify(req.body)
 )
 
@@ -37,37 +16,30 @@ app.use(express.json())
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
 
 app.get('/info', (request, response) => {
-    response.send(
-        `<p>Phonebook has info for ${persons.length} people.</p>
-        <p>${new Date()}`
-    )
+    Person.find({}).then(persons => {
+        response.send(
+            `<p>Phonebook has info for ${persons.length} people.</p>
+            <p>${new Date()}`
+        )
+    })
 })
 
 app.get('/api/persons', (request, response) => {
-    response.json(persons)
+    Person.find({}).then(persons =>
+        response.json(persons.map(person => person.toJSON())))
 })
 
-
-app.get('/api/persons/:id', (request, response) => {
+app.get('/api/persons/:id', (request, response, next) => {
     const id = request.params.id
-    const person = persons.find(person => String(person.id) === id)
-
-    if (person) {
-        response.json(person)
-    }
-    else {
-        response.status(404).end()
-    }
+    Person.findById(id).then(person => {
+        if (person) {
+            response.json(person.toJSON())
+        }
+        else {
+            response.status(404).end()
+        }
+    }).catch(error => next(error))
 })
-
-const generateId = () => {
-    const genID = () => Math.floor(Math.random() * 10000)
-    let id = genID()
-    while (persons.find((person) => person.id === id)) {
-        id = genID()
-    }
-    return id
-}
 
 app.post('/api/persons', (request, response) => {
     const body = request.body
@@ -77,32 +49,72 @@ app.post('/api/persons', (request, response) => {
             error: 'content missing'
         })
     }
-    else if (persons.find(person => person.name === body.name)) {
+    // else if (persons.find(person => person.name === body.name)) {
+    //     response.status(400).json({
+    //         error: 'name must be unique'
+    //     })
+    // }
+    else {
+        const person = new Person({
+            name: body.name,
+            number: body.number
+        })
+        person.save().then(savedPerson =>
+            response.json(savedPerson.toJSON())
+        )
+    }
+})
+
+app.put('/api/persons/:id', (request, response, next) => {
+    const id = request.params.id
+    const body = request.body
+    if (!body.name || !body.number) {
         response.status(400).json({
-            error: 'name must be unique'
+            error: 'content missing'
         })
     }
     else {
+
         const person = {
             name: body.name,
-            number: body.number ? body.number : 'no number',
-            id: generateId(),
+            number: body.number
         }
 
-        persons = persons.concat(person)
+        Person.findByIdAndUpdate(id, person, { new: true })
+            .then(updatedPerson =>
+                response.json(updatedPerson.toJSON())
+            ).catch(error => next(error))
 
-        response.json(person)
     }
 })
 
-app.delete('/api/persons/:id', (request, response) => {
+app.delete('/api/persons/:id', (request, response, next) => {
     const id = request.params.id
-    persons = persons.filter(person => String(person.id) !== id)
-
-    response.status(204).end()
+    Person.findByIdAndRemove(id).then(result =>
+        response.status(204).end()
+    ).catch(error => next(error))
 })
 
-const PORT = process.env.PORT || 3001;
+const unknownEndpoint = (request, response) => {
+    response.status(404).send({ error: 'unknown endpoint' })
+}
+
+// handler of requests with unknown endpoint
+app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+    console.log(error.message)
+
+    if (error.name === 'CastError') {
+        return response.status(400).send({ error: `malformatted id` })
+    }
+
+    next(error)
+}
+
+app.use(errorHandler)
+
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
-    console.log(`Our app is running on port ${ PORT }`);
+    console.log(`Our app is running on port ${PORT}`);
 });
