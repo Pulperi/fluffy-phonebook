@@ -46,7 +46,7 @@ app.post('/api/persons', (request, response) => {
 
     if (!body.name || !body.number) {
         response.status(400).json({
-            error: 'content missing'
+            error: 'Content missing'
         })
     }
     // else if (persons.find(person => person.name === body.name)) {
