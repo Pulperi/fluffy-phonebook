@@ -36,11 +36,6 @@ app.use(express.static('build'))
 app.use(express.json())
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
 
-
-app.get('/', (request, response) => {
-    response.redirect('/info')
-})
-
 app.get('/info', (request, response) => {
     response.send(
         `<p>Phonebook has info for ${persons.length} people.</p>
